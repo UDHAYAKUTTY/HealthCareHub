@@ -9,7 +9,6 @@ import lombok.*;
 @Builder
 public class DoctorAvailabilityRequest {
 
-    private Long doctorId;
 
     private String availableDate;
     private String startTime;

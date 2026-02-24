@@ -11,17 +11,17 @@ import java.util.List;
 @Repository
 public interface DoctorAvailabilityRepository extends JpaRepository<DoctorAvailability, Long> {
 
-    List<DoctorAvailability> findByDoctorId(Long doctorId);
+    List<DoctorAvailability> findByDoctor_Id(Long doctorId);
 
     // For ADD
-    boolean existsByDoctorIdAndAvailableDateAndStartTime(
+    boolean existsByDoctor_IdAndAvailableDateAndStartTime(
             Long doctorId,
             String availableDate,
             String startTime
     );
      @Query("""
 SELECT COUNT(d) > 0 FROM DoctorAvailability d
-                    WHERE d.doctorId = :doctorId
+                    WHERE d.doctor.id = :doctorId
                     AND d.availableDate = :availableDate
                     AND (
                             (:startTime < d.endTime AND :endTime > d.startTime)
@@ -33,7 +33,7 @@ SELECT COUNT(d) > 0 FROM DoctorAvailability d
              @Param("endTime") String endTime
      );
     // For UPDATE
-    boolean existsByDoctorIdAndAvailableDateAndStartTimeAndIdNot(
+    boolean existsByDoctor_IdAndAvailableDateAndStartTimeAndIdNot(
             Long doctorId,
             String availableDate,
             String startTime,
@@ -41,7 +41,7 @@ SELECT COUNT(d) > 0 FROM DoctorAvailability d
     );
     @Query("""
 SELECT COUNT(d) > 0 FROM DoctorAvailability d
-WHERE d.doctorId = :doctorId
+WHERE d.doctor.id = :doctorId
 AND d.availableDate = :availableDate
 AND d.id <> :slotId
 AND (
