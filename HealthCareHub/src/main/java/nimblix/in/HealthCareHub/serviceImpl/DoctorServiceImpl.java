@@ -20,6 +20,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +32,14 @@ public class DoctorServiceImpl implements DoctorService {
     private final SpecializationRepository specializationRepository;
     private final DoctorAvailabilityRepository doctorAvailabilityRepository;
 
+    // Validate slot date/time and prevent past date entries
+    private static final DateTimeFormatter DATE_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+    private static final DateTimeFormatter TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("HH:mm");
+
+    private static final ZoneId IST_ZONE = ZoneId.of("Asia/Kolkata");
 
     @Override
     public DoctorAvailabilityResponse addDoctorTimeSlot(Long doctorId, DoctorAvailabilityRequest request) {
@@ -51,17 +61,20 @@ public class DoctorServiceImpl implements DoctorService {
                 .orElseThrow(() -> new UserNotFoundException(
                         "Doctor not found with id: " + doctorId));
 
-        LocalDate slotDate = LocalDate.parse(request.getAvailableDate());
-        if(slotDate.isBefore(LocalDate.now())){
+        LocalDate slotDate = LocalDate.parse(
+                request.getAvailableDate(), DATE_FORMATTER);
+
+        LocalDate todayIST = LocalDate.now(IST_ZONE);
+        if(slotDate.isBefore(todayIST)){
             throw new RuntimeException("Cannot add slot for past date");
         }
-        LocalTime start = LocalTime.parse(request.getStartTime());
-        LocalTime end = LocalTime.parse(request.getEndTime());
+        LocalTime start = LocalTime.parse(request.getStartTime(), TIME_FORMATTER);
+        LocalTime end = LocalTime.parse(request.getEndTime(), TIME_FORMATTER);
 
         if(!start.isBefore(end)){
             throw new RuntimeException("Start time must be before end time");
         }
-
+//duplicate check
         boolean exists = doctorAvailabilityRepository
                 .existsByDoctor_IdAndAvailableDateAndStartTime(
                         doctorId,
@@ -95,7 +108,7 @@ public class DoctorServiceImpl implements DoctorService {
                 .build();
 
        DoctorAvailability saved = doctorAvailabilityRepository.save(slot);
-       return mapToResponse(saved);
+        return doctorAvailabilityRepository.getSlotResponseById(saved.getId());
     }
 
     @Override
@@ -110,22 +123,6 @@ public class DoctorServiceImpl implements DoctorService {
             throw new RuntimeException("slot does not belong to this doctor");
         }
 
-            if (request.getAvailableDate() != null) {
-                LocalDate slotDate = LocalDate.parse(request.getAvailableDate());
-                if (slotDate.isBefore(LocalDate.now())) {
-                    throw new RuntimeException("Cannot update slot to past date");
-                }
-            }
-        boolean noChange =
-                (request.getAvailableDate() == null || request.getAvailableDate().equals(slot.getAvailableDate())) &&
-                        (request.getStartTime() == null || request.getStartTime().equals(slot.getStartTime())) &&
-                        (request.getEndTime() == null || request.getEndTime().equals(slot.getEndTime())) &&
-                        (request.getIsAvailable() == null || request.getIsAvailable().equals(slot.isAvailable()));
-
-        if (noChange) {
-            throw new RuntimeException("No changes detected for update");
-        }
-
         // Determine final values (existing or updated)
         String finalDate = request.getAvailableDate() != null
                 ? request.getAvailableDate()
@@ -138,9 +135,24 @@ public class DoctorServiceImpl implements DoctorService {
         String finalEnd = request.getEndTime() != null
                 ? request.getEndTime()
                 : slot.getEndTime();
+        boolean finalAvailability = request.getIsAvailable() != null
+                ? request.getIsAvailable()
+                : slot.isAvailable();
 
-        LocalTime start = LocalTime.parse(finalStart);
-        LocalTime end = LocalTime.parse(finalEnd);
+        if (finalDate.equals(slot.getAvailableDate()) &&
+                finalStart.equals(slot.getStartTime()) &&
+                finalEnd.equals(slot.getEndTime()) &&
+                ( finalAvailability == slot.isAvailable())) {
+            throw new RuntimeException("No changes detected for update");
+        }
+        LocalDate parsedDate = LocalDate.parse(finalDate, DATE_FORMATTER);
+        LocalDate todayIST = LocalDate.now(IST_ZONE);
+        if (parsedDate.isBefore(todayIST)) {
+            throw new RuntimeException("Cannot update slot to past date");
+        }
+
+        LocalTime start = LocalTime.parse(finalStart, TIME_FORMATTER);
+        LocalTime end = LocalTime.parse(finalEnd, TIME_FORMATTER);
 
         if (!start.isBefore(end)) {
             throw new RuntimeException("Start time must be before end time");
@@ -173,38 +185,14 @@ public class DoctorServiceImpl implements DoctorService {
             throw new RuntimeException("Time slot overlaps with existing slot");
         }
 
-        if (request.getAvailableDate() != null)
-            slot.setAvailableDate(request.getAvailableDate());
+        slot.setAvailableDate(finalDate);
+        slot.setStartTime(finalStart);
+        slot.setEndTime(finalEnd);
+        slot.setAvailable(finalAvailability);
 
-        if (request.getStartTime() != null)
-            slot.setStartTime(request.getStartTime());
-
-        if (request.getEndTime() != null)
-            slot.setEndTime(request.getEndTime());
-
-        if (request.getIsAvailable() != null) {
-            slot.setAvailable(request.getIsAvailable());
-        }
-        DoctorAvailability updated = doctorAvailabilityRepository.save(slot);
-
-        return mapToResponse(updated);
+        DoctorAvailability saved = doctorAvailabilityRepository.save(slot);
+        return doctorAvailabilityRepository.getSlotResponseById(saved.getId());
     }
-
-    private DoctorAvailabilityResponse mapToResponse(DoctorAvailability slot) {
-        return DoctorAvailabilityResponse.builder()
-                .id(slot.getId())
-                .doctorId(slot.getDoctor().getId())
-                .doctorName(slot.getDoctor().getName())
-                .availableDate(slot.getAvailableDate())
-                .startTime(slot.getStartTime())
-                .endTime(slot.getEndTime())
-                .available(slot.isAvailable())
-                .createdTime(slot.getCreatedTime())
-                .updatedTime(slot.getUpdatedTime())
-                .build();
-
-    }
-
 
     @Override
     public String registerDoctor(DoctorRegistrationRequest request) {

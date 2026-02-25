@@ -15,7 +15,7 @@ public class DoctorAvailabilityResponse {
     private String availableDate;
     private String startTime;
     private String endTime;
-    private Boolean available;
+    private boolean available;
     private String createdTime;
     private String updatedTime;
 }

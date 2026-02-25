@@ -1,6 +1,7 @@
 package nimblix.in.HealthCareHub.repository;
 
 import nimblix.in.HealthCareHub.model.DoctorAvailability;
+import nimblix.in.HealthCareHub.response.DoctorAvailabilityResponse;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,8 +11,6 @@ import java.util.List;
 
 @Repository
 public interface DoctorAvailabilityRepository extends JpaRepository<DoctorAvailability, Long> {
-
-    List<DoctorAvailability> findByDoctor_Id(Long doctorId);
 
     // For ADD
     boolean existsByDoctor_IdAndAvailableDateAndStartTime(
@@ -55,4 +54,20 @@ AND (
             @Param("endTime") String endTime,
             @Param("slotId") Long slotId
     );
+    @Query("""
+       SELECT new nimblix.in.HealthCareHub.response.DoctorAvailabilityResponse(
+           d.id,
+           d.doctor.id,
+           d.doctor.name,
+           d.availableDate,
+           d.startTime,
+           d.endTime,
+           d.isAvailable,
+           d.createdTime,
+           d.updatedTime
+       )
+       FROM DoctorAvailability d
+       WHERE d.id = :slotId
+       """)
+    DoctorAvailabilityResponse getSlotResponseById(Long slotId);
 }
