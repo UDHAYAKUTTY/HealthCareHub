@@ -1,6 +1,8 @@
 package nimblix.in.HealthCareHub.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import nimblix.in.HealthCareHub.request.PatientRegistrationRequest;
 import nimblix.in.HealthCareHub.service.PatientService;
 import org.springframework.http.ResponseEntity;
@@ -22,11 +24,7 @@ public class PatientController {
 
         String response = patientService.registerPatient(request);
 
-        if (response.contains("already exists")) {
-            return ResponseEntity.status(409).body(response); // CONFLICT
-        }
-
-        return ResponseEntity.status(201).body(response); // CREATED
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/getPatientDetails/{patientId}/{hospitalId}")
