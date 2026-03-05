@@ -2,10 +2,12 @@ package nimblix.in.HealthCareHub.serviceImpl;
 
 import lombok.RequiredArgsConstructor;
 import nimblix.in.HealthCareHub.constants.HealthCareConstants;
+import nimblix.in.HealthCareHub.exception.DoctorNotFoundException;
 import nimblix.in.HealthCareHub.exception.UserNotFoundException;
 import nimblix.in.HealthCareHub.model.Doctor;
 import nimblix.in.HealthCareHub.repository.DoctorRepository;
 import nimblix.in.HealthCareHub.request.DoctorRegistrationRequest;
+import nimblix.in.HealthCareHub.response.DoctorProfileResponse;
 import nimblix.in.HealthCareHub.service.DoctorService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +17,8 @@ import nimblix.in.HealthCareHub.model.Hospital;
 import nimblix.in.HealthCareHub.model.Specialization;
 import nimblix.in.HealthCareHub.repository.HospitalRepository;
 import nimblix.in.HealthCareHub.repository.SpecializationRepository;
+
+import java.util.List;
 
 
 @Service
@@ -134,7 +138,38 @@ public class DoctorServiceImpl implements DoctorService {
 
         return "Doctor deleted successfully (Hard Delete)";
     }
+    @Override
+    public DoctorProfileResponse getDoctorProfile(Long doctorId) {
+
+        return doctorRepository.findDoctorProfileById(doctorId)
+                .orElseThrow(() ->
+                        new DoctorNotFoundException("Doctor not found with id: " + doctorId)
+                );
+    }
 
 
+    public Specialization createSpecialization(Specialization specialization) {
+
+        specializationRepository.findByName(specialization.getName())
+                .ifPresent(existing -> {
+                    throw new RuntimeException("Specialization already exists");
+                });
+
+        return specializationRepository.save(specialization);
+    }
+
+    public List<Specialization> getAllSpecializations() {
+        return specializationRepository.findAll();
+    }
+
+    public Specialization updateSpecialization(Long id, Specialization specialization) {
+
+        Specialization existing = specializationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Specialization not found"));
+
+        existing.setName(specialization.getName());
+
+        return specializationRepository.save(existing);
+    }
 
 }
